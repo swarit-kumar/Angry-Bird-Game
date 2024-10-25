@@ -1,5 +1,6 @@
 package Level;
 
+import Homescreen.Homescreen;
 import Playscreen.Playscreen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
@@ -26,8 +27,8 @@ public class Level implements Screen {
     private ImageButton levelButton1;
     private ImageButton levelButton2;
     private ImageButton levelButton3;
-    private Texture quitButtonTexture;
-    private ImageButton quitButton;
+    private Texture backButtonTexture;
+    private ImageButton backButton;
     private Main game;
 
     public Level(Main game) {
@@ -42,19 +43,19 @@ public class Level implements Screen {
 
         buttonTexture1 = new Texture(Gdx.files.internal("level1.png"));
         levelButton1 = new ImageButton(new TextureRegionDrawable(buttonTexture1));
-        levelButton1.setSize(200, 100);  // Adjust size of the buttons
+        levelButton1.setSize(200, 100);
         levelButton1.setPosition(300, 250);
         stage.addActor(levelButton1);
 
         buttonTexture2 = new Texture(Gdx.files.internal("level2.png"));
         levelButton2 = new ImageButton(new TextureRegionDrawable(buttonTexture2));
-        levelButton2.setSize(200, 100);  // Adjust size of the buttons
+        levelButton2.setSize(200, 100);
         levelButton2.setPosition(500, 250);
         stage.addActor(levelButton2);
 
         buttonTexture3 = new Texture(Gdx.files.internal("level3.png"));
         levelButton3 = new ImageButton(new TextureRegionDrawable(buttonTexture3));
-        levelButton3.setSize(200, 100);  // Adjust size of the buttons
+        levelButton3.setSize(200, 100);
         levelButton3.setPosition(700, 250);
         stage.addActor(levelButton3);
 
@@ -68,25 +69,28 @@ public class Level implements Screen {
         levelButton2.addListener(new com.badlogic.gdx.scenes.scene2d.utils.ClickListener() {
             @Override
             public void clicked(com.badlogic.gdx.scenes.scene2d.InputEvent event, float x, float y) {
-                game.setScreen(new Playscreen(game, 1)); // Go to PlayScreen level 2
+                game.setScreen(new Playscreen(game, 2)); // Go to PlayScreen level 2
             }
         });
 
         levelButton3.addListener(new com.badlogic.gdx.scenes.scene2d.utils.ClickListener() {
             @Override
             public void clicked(com.badlogic.gdx.scenes.scene2d.InputEvent event, float x, float y) {
-                game.setScreen(new Playscreen(game, 1)); // Go to PlayScreen level 3
+                game.setScreen(new Playscreen(game, 3)); // Go to PlayScreen level 3
             }
         });
-        quitButtonTexture = new Texture(Gdx.files.internal("quit.png"));
-        quitButton = new ImageButton(new TextureRegionDrawable(quitButtonTexture));
-        quitButton.setSize(60, 60);
-        quitButton.setPosition(10, 10);
-        stage.addActor(quitButton);
-        quitButton.addListener(new com.badlogic.gdx.scenes.scene2d.utils.ClickListener() {
+
+        // Load back button texture and set up back button
+        backButtonTexture = new Texture(Gdx.files.internal("back.png"));
+        backButton = new ImageButton(new TextureRegionDrawable(backButtonTexture));
+        backButton.setSize(60, 60);
+        backButton.setPosition(10, 10);
+        stage.addActor(backButton);
+
+        backButton.addListener(new com.badlogic.gdx.scenes.scene2d.utils.ClickListener() {
             @Override
             public void clicked(com.badlogic.gdx.scenes.scene2d.InputEvent event, float x, float y) {
-                Gdx.app.exit(); // Quit the game
+                game.setScreen(new Homescreen(game)); // Go back to Homescreen
             }
         });
     }
@@ -124,5 +128,6 @@ public class Level implements Screen {
         buttonTexture1.dispose();
         buttonTexture2.dispose();
         buttonTexture3.dispose();
+        backButtonTexture.dispose();
     }
 }
