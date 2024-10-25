@@ -1,33 +1,60 @@
-# AngryBird
+AngryBird
+A libGDX-based Angry Birds game project, created for the CSE 201 Advanced Programming course. This project includes various gameplay elements such as levels, birds, pigs, and a catapult, modeled using object-oriented principles and following best coding practices. This project is structured to run on desktop using LWJGL3.
 
-A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/libgdx/gdx-liftoff).
+Project Overview
+This Angry Birds project was generated with gdx-liftoff and features the following components:
 
-This project was generated with a template including simple application launchers and an `ApplicationAdapter` extension that draws libGDX logo.
+Platforms
+Core: Contains the main game logic shared across all platforms.
+lwjgl3: Desktop platform configuration using LWJGL3 for desktop builds and execution.
+Features
+Levels: Three playable levels with unique structures, pigs, and bird types.
+Screens: Includes a homescreen, level selection screen, game screen, and menu screen.
+Controls: Mouse/touch interactions for level selection, gameplay actions, and navigation.
 
-## Platforms
+Angry Birds Game - Setup and Run Guide
+Requirements
+Java Development Kit (JDK) - Download and install JDK 8 or higher.
+Gradle - The Gradle wrapper is included, so no separate Gradle installation is required.
+Easy Steps to Set Up and Run the Game
+1. Clone or Download the Project
+Clone the repository from your GitHub or local source:
+bash
+Copy code
+git clone https://github.com/your-username/angrybirds-project.git
+Alternatively, download the ZIP and extract it to your preferred directory.
+2. Open the Project in Your IDE
+Use IntelliJ IDEA, Eclipse, or any IDE with Gradle support.
+Open the project by selecting the root folder where the project was cloned or extracted.
+3. Build the Project
+Run the following command to download dependencies and compile the code:
 
-- `core`: Main module with the application logic shared by all platforms.
-- `lwjgl3`: Primary desktop platform using LWJGL3.
+bash
+Copy code
+./gradlew build
+4. Run the Game
+To start the game on a desktop environment, use the following command:
 
-## Gradle
+bash
+Copy code
+./gradlew lwjgl3:run
+This command launches the game in a window where you can interact with it.
 
-This project uses [Gradle](https://gradle.org/) to manage dependencies.
-The Gradle wrapper was included, so you can run Gradle tasks using `gradlew.bat` or `./gradlew` commands.
-Useful Gradle tasks and flags:
+Additional Commands
+Clean the Project - Removes build files:
 
-- `--continue`: when using this flag, errors will not stop the tasks from running.
-- `--daemon`: thanks to this flag, Gradle daemon will be used to run chosen tasks.
-- `--offline`: when using this flag, cached dependency archives will be used.
-- `--refresh-dependencies`: this flag forces validation of all dependencies. Useful for snapshot versions.
-- `build`: builds sources and archives of every project.
-- `cleanEclipse`: removes Eclipse project data.
-- `cleanIdea`: removes IntelliJ project data.
-- `clean`: removes `build` folders, which store compiled classes and built archives.
-- `eclipse`: generates Eclipse project data.
-- `idea`: generates IntelliJ project data.
-- `lwjgl3:jar`: builds application's runnable jar, which can be found at `lwjgl3/build/libs`.
-- `lwjgl3:run`: starts the application.
-- `test`: runs unit tests (if any).
+bash
+Copy code
+./gradlew clean
+Run Tests - Executes any unit tests included:
 
-Note that most tasks that are not specific to a single project can be run with `name:` prefix, where the `name` should be replaced with the ID of a specific project.
-For example, `core:clean` removes `build` folder only from the `core` project.
+bash
+Copy code
+./gradlew test
+5. Run in an IDE
+If you prefer running the game directly in an IDE:
+
+IntelliJ IDEA or Eclipse:
+Open the lwjgl3 folder in your IDE.
+Find the Lwjgl3Launcher class.
+Right-click on Lwjgl3Launcher and select Run.
