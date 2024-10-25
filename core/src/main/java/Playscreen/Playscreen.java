@@ -128,6 +128,8 @@ public class Playscreen implements Screen {
 
         // Draw the pigs
         game.getBatch().draw(smallPigTexture, 810, 80, 40, 40);
+        game.getBatch().draw(smallPigTexture, 790, 160, 70, 70);
+
 
         // End drawing
         game.getBatch().end();
