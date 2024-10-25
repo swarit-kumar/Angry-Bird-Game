@@ -26,6 +26,8 @@ public class Homescreen implements Screen {
     private ImageButton quitButton;
     private Texture menuButtonTexture;
     private ImageButton menuButton;
+    private Texture soundButtonTexture;
+    private ImageButton soundButton;
     private Main game;
 
     public Homescreen(Main game) {
@@ -68,6 +70,12 @@ public class Homescreen implements Screen {
         menuButton.setPosition(1140,10);
         menuButton.setSize(50, 50);
         stage.addActor(menuButton);
+
+        soundButtonTexture = new Texture(Gdx.files.internal("sound.png"));
+        soundButton = new ImageButton(new TextureRegionDrawable(soundButtonTexture));
+        soundButton.setPosition(1080,8);
+        soundButton.setSize(50, 50);
+        stage.addActor(soundButton);
 
         // Add click listener to the play button
         playButton.addListener(new com.badlogic.gdx.scenes.scene2d.utils.ClickListener() {
@@ -120,5 +128,6 @@ public class Homescreen implements Screen {
         playButtonTexture.dispose();
         quitButtonTexture.dispose();
         menuButtonTexture.dispose();
+        soundButtonTexture.dispose();
     }
 }
