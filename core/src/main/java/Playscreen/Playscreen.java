@@ -1,6 +1,7 @@
 package Playscreen;
 
 import Menu.Menuscreen;
+import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -18,18 +19,22 @@ import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.Queue;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.mygdx.game.*;
 import Level.Level;
 import helper.Gameinfo;
 import com.badlogic.gdx.physics.box2d.*;
 
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+
 import static com.mygdx.game.GameConstants.PPM;
 
-public class PlayScreen implements Screen, InputProcessor {
+public class PlayScreen implements Screen {
     private static final float MAX_DRAG_DISTANCE = 100f;
     private Array<Vector2> trajectoryPoints = new Array<>();
+    private List<Birds> remainingBirds;
     private Main game;
     private int currentLevel;
     private Slingshot slingshot;
@@ -61,6 +66,7 @@ public class PlayScreen implements Screen, InputProcessor {
     public PlayScreen(Main game, int level) {
         try {
             this.game = game;
+            this.currentLevel = level;
             world = new World(new Vector2(0, -9.8f), true);  // Gravity is typically (0, -9.8f)
 
             this.camera = new OrthographicCamera();
@@ -83,13 +89,40 @@ public class PlayScreen implements Screen, InputProcessor {
             menuButton.addListener(new ChangeListener() {
                 @Override
                 public void changed(ChangeEvent event, Actor actor) {
-                    game.setScreen(new Menuscreen(game)); // Switch to MenuScreen
+                    game.setScreen(new Menuscreen(game,currentLevel)); // Switch to MenuScreen
                 }
             });
 
             stage.addActor(menuButton);
             Gdx.input.setInputProcessor(stage);
-                // Add menuButton to stage
+            // Add Save Button
+            Texture saveTexture = new Texture(Gdx.files.internal("save.png"));
+            ImageButton saveButton = new ImageButton(new TextureRegionDrawable(saveTexture));
+            saveButton.setPosition(70, Gdx.graphics.getHeight() - 60);
+            saveButton.setSize(50, 50);
+            saveButton.addListener(new ChangeListener() {
+                @Override
+                public void changed(ChangeEvent event, Actor actor) {
+                    saveGame();
+                }
+            });
+
+            // Add Load Button
+            Texture loadTexture = new Texture(Gdx.files.internal("load.png"));
+            ImageButton loadButton = new ImageButton(new TextureRegionDrawable(loadTexture));
+            loadButton.setPosition(140, Gdx.graphics.getHeight() - 60);
+            loadButton.setSize(50, 50);
+            loadButton.addListener(new ChangeListener() {
+                @Override
+                public void changed(ChangeEvent event, Actor actor) {
+                    loadGame();
+                }
+            });
+
+            stage.addActor(saveButton);
+            stage.addActor(loadButton);
+
+            // Add menuButton to stage
 
             debugRenderer = new Box2DDebugRenderer();
             world.setContactListener(new GameContactListener(this));
@@ -98,7 +131,7 @@ public class PlayScreen implements Screen, InputProcessor {
         }catch (Exception e) {
             Gdx.app.error("PlayScreen", "Error initializing PlayScreen", e);
             // Optionally, return to main menu or show an error screen
-            game.setScreen(new Menuscreen(game));
+            game.setScreen(new Menuscreen(game,currentLevel));
         }
 
     }
@@ -114,8 +147,77 @@ public class PlayScreen implements Screen, InputProcessor {
             }
         }
     }
+    // Capture the current game state
+    // Capture game state method
 
 
+    // Save game method
+    private void saveGame() {
+        // Capture the current game state
+        GameState gameState = captureGameState();
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("gameSave.dat"))) {
+            oos.writeObject(gameState);  // Save the game state to a file
+            System.out.println("Game saved successfully!");
+        } catch (IOException e) {
+            System.out.println("Error saving game: " + e.getMessage());
+        }
+    }
+
+    private GameState captureGameState() {
+        List<Birds> capturedBirds = new ArrayList<>();
+        List<Pig> capturedPigs = new ArrayList<>();
+        List<Block> capturedBlocks = new ArrayList<>();
+
+        for (Birds bird : birds) {
+            // Ensure you're retrieving the correct texture and world for each bird
+            Texture birdTexture = bird.getTexture(); // Get the texture of the bird
+            World birdWorld = bird.getBody().getWorld(); // Get the world of the bird
+
+            // Now pass the correct parameters to the Bird constructor
+            capturedBirds.add(new RedBird(birdTexture, bird.getX(), bird.getY(), bird.isLaunched(), bird.getImpactPower(), birdWorld));
+        }
+
+        for (Pig pig : pigs) {
+            // You need to retrieve the texture and world properly here
+            Texture pigTexture = pig.getTexture();  // Get the texture of the pig
+            World pigWorld = pig.getBody().getWorld(); // Get the world from the pig's body
+            capturedPigs.add(new Pig(pigTexture, pig.getX(), pig.getY(), (int) pig.getHealth(), pigWorld));
+        }
+        for (Block block : blocks) {
+            // Retrieve the texture and world similarly
+            Texture blockTexture = block.getTexture();  // Get the texture of the block
+            World blockWorld = block.getBody().getWorld(); // Get the world from the block's body
+            capturedBlocks.add(new Block(blockTexture, block.getX(), block.getY(), block.getMaterial(), blockWorld));
+        }
+        List<Birds> remainingBirds = new ArrayList<>();
+        for (Birds bird : birds) {
+            if (!bird.isLaunched()) {
+                remainingBirds.add(bird);
+            }
+        }
+        // Capture other necessary data (level, remaining birds, slingshot position)
+        return new GameState(capturedBirds, capturedPigs, capturedBlocks, remainingBirds, currentLevel, slingshot.getX(), slingshot.getY());
+    }
+
+    private void loadGame() {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream("gameSave.dat"))) {
+            GameState gameState = (GameState) ois.readObject();
+            restoreGameState(gameState);
+            System.out.println("Game loaded successfully!");
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Error loading game: " + e.getMessage());
+        }
+    }
+
+    private void restoreGameState(GameState gameState) {
+        // Restore the captured game state from GameState object
+        this.birds = (Array<Birds>) gameState.getBirds();
+        this.pigs = (Array<Pig>) gameState.getPigs();
+        this.blocks = (Array<Block>) gameState.getBlocks();
+        this.remainingBirds = gameState.getRemainingBirds();
+        this.currentLevel = gameState.getLevel();
+        this.slingshot.setPosition(gameState.getSlingshotX(), gameState.getSlingshotY());
+    }
     private void setupLevel(int level) {
         birds.clear();
         pigs.clear();
@@ -153,72 +255,160 @@ public class PlayScreen implements Screen, InputProcessor {
     }
 
     private void loadLevel1() {
-        RedBird redBird = new RedBird(new Texture(Gdx.files.internal("redbird.png")), 280, 80, 1, world);
+        // Create a RedBird at the initial position
+        RedBird redBird = new RedBird(new Texture(Gdx.files.internal("redbird.png")), 280, 80, false,1, world);
         redBird.getSprite().setSize(50, 50);
         birds.add(redBird);
-        createBox2DBird(redBird);
+        createBox2DBird(redBird,280,80);
 
-        Pig pig = new Pig(new Texture(Gdx.files.internal("pig.png")), 550, 80, 100, world);
-        pig.getSprite().setSize(50f, 50f);
-        pigs.add(pig);
-        createBox2DPig(pig);
-        Pig pig1 = new Pig(new Texture(Gdx.files.internal("pig.png")), 500, 100, 100, world);
+        // Create a Pig on the top center of the structure
+        Pig pig1 = new Pig(new Texture(Gdx.files.internal("pig.png")), 810, 80, 2, world);
         pig1.getSprite().setSize(50f, 50f);
         pigs.add(pig1);
         createBox2DPig(pig1);
 
-        Block block = new Block(new Texture(Gdx.files.internal("woodblock.png")), 450, 200, "wood", world);
-        block.getSprite().setSize(60, 30);
+        // Add vertical wooden blocks
+        addVerticalBlock(722, 80, 120f, 60f);
+        addVerticalBlock(826, 80, 120f, 60f);
+        addVerticalBlock(722, 140, 120f, 60f);
+        addVerticalBlock(826, 140, 120f, 60f);
+
+        // Add horizontal wooden blocks
+        addHorizontalBlock(777, 170, 120f, 60f);
+        addHorizontalBlock(777, 110, 120f, 60f);
+
+
+        addGlassBlock(810, 143, 50f, 50f);
+
+
+    }
+
+    private void addVerticalBlock(float x, float y, float width, float height) {
+        Block block = new Block(new Texture(Gdx.files.internal("woodvertical.png")), x, y, "wood", world);
+        block.getSprite().setSize(width, height);
         blocks.add(block);
         createBox2DBlock(block);
     }
 
+    private void addHorizontalBlock(float x, float y, float width, float height) {
+        Block block = new Block(new Texture(Gdx.files.internal("woodhorizontal.png")), x, y, "wood", world);
+        block.getSprite().setSize(width, height);
+        blocks.add(block);
+        createBox2DBlock(block);
+    }
+
+    private void addGlassBlock(float x, float y, float width, float height) {
+        Block block = new Block(new Texture(Gdx.files.internal("wood" + "block.png")), x, y, "wood", world);
+        block.getSprite().setSize(width, height);
+        blocks.add(block);
+        createBox2DBlock(block);
+    }
+    private void addglasstriangle(float x, float y, float width, float height) {
+        Block block = new Block(new Texture(Gdx.files.internal("glassblock.png")), x, y, "wood", world);
+        block.getSprite().setSize(width, height);
+        blocks.add(block);
+        createBox2DBlock(block);
+    }
+    private void addstone(float x, float y, float width, float height) {
+        Block block = new Block(new Texture(Gdx.files.internal("stoneblock.png")), x, y, "wood", world);
+        block.getSprite().setSize(width, height);
+        blocks.add(block);
+        createBox2DBlock(block);
+    }
+
+
     private void loadLevel2() {
-        YellowBird yellowBird = new YellowBird(new Texture(Gdx.files.internal("yellowbird.png")), 280, 80, 2, world);
+        YellowBird yellowBird = new YellowBird(new Texture(Gdx.files.internal("yellowbird.png")), 298, 90, 2, world);
         yellowBird.getSprite().setSize(50, 50);
         birds.add(yellowBird);
-        createBox2DBird(yellowBird);
-        RedBird redBird = new RedBird(new Texture(Gdx.files.internal("redbird.png")), 200, 80, 1, world);
+        createBox2DBird(yellowBird,280,80);
+
+
+        RedBird redBird = new RedBird(new Texture(Gdx.files.internal("redbird.png")), 200, 80, false,1, world);
         redBird.getSprite().setSize(50, 50);
         redBird.getSprite().setPosition(200, 80);
         birds.add(redBird);
-        createBox2DBird(redBird);
+        createBox2DBird(redBird,280,80);
 
-        Pig pig = new Pig(new Texture(Gdx.files.internal("pig.png")), 600, 150, 2, world);
-        pig.getSprite().setSize(50, 50);
+        Pig pig1 = new Pig(new Texture(Gdx.files.internal("pig.png")), 810, 86, 2, world);
+        pig1.getSprite().setSize(50f, 50f);
+        pigs.add(pig1);
+        createBox2DPig(pig1);
+
+        Pig pig = new Pig(new Texture(Gdx.files.internal("pig.png")), 850, 200, 100, world);
+        pig.getSprite().setSize(50f, 50f);
         pigs.add(pig);
         createBox2DPig(pig);
 
-        Block block = new Block(new Texture(Gdx.files.internal("woodblock.png")), 550, 120, "wood", world);
-        block.getSprite().setSize(60, 30);
-        blocks.add(block);
-        createBox2DBlock(block);
+
+        // Add vertical wooden blocks
+        addVerticalBlock(722, 80, 120f, 60f);
+        addVerticalBlock(826, 80, 120f, 60f);
+        addVerticalBlock(722, 140, 120f, 60f);
+        addVerticalBlock(826, 140, 120f, 60f);
+
+        // Add horizontal wooden blocks
+        addHorizontalBlock(777, 170, 120f, 60f);
+        addHorizontalBlock(777, 110, 120f, 60f);
+
+
+        addGlassBlock(810, 143, 50f, 50f);
+        addglasstriangle(785, 205, 50f, 50f);
+        addstone(777, 27, 120f, 120f);
+
     }
 
     private void loadLevel3() {
         BlackBird blackBird = new BlackBird(new Texture(Gdx.files.internal("blackbird.png")), 280, 80, 2, world);
         blackBird.getSprite().setSize(50, 50);
         birds.add(blackBird);
-        createBox2DBird(blackBird);
+        createBox2DBird(blackBird,280,80);
 
-        Pig pig = new Pig(new Texture(Gdx.files.internal("pig.png")), 700, 200, 3, world);
-        pig.getSprite().setSize(50, 50);
+        Pig pig1 = new Pig(new Texture(Gdx.files.internal("pig.png")), 810, 86, 2, world);
+        pig1.getSprite().setSize(50f, 50f);
+        pigs.add(pig1);
+        createBox2DPig(pig1);
+
+        Pig pig2 = new Pig(new Texture(Gdx.files.internal("pig.png")), 710, 80, 2, world);
+        pig2.getSprite().setSize(50f, 50f);
+        pigs.add(pig2);
+        createBox2DPig(pig2);
+
+        Pig pig = new Pig(new Texture(Gdx.files.internal("pig.png")), 850, 200, 100, world);
+        pig.getSprite().setSize(50f, 50f);
         pigs.add(pig);
         createBox2DPig(pig);
 
-        Block block = new Block(new Texture(Gdx.files.internal("steelblock.png")), 650, 180, "steel", world);
-        block.getSprite().setSize(60, 30);
-        blocks.add(block);
-        createBox2DBlock(block);
+
+        // Add vertical wooden blocks
+        addVerticalBlock(722, 80, 120f, 60f);
+        addVerticalBlock(826, 80, 120f, 60f);
+        addVerticalBlock(722, 140, 120f, 60f);
+        addVerticalBlock(826, 140, 120f, 60f);
+        addVerticalBlock(622, 80, 120f, 60f);
+
+        // Add horizontal wooden blocks
+        addHorizontalBlock(777, 170, 120f, 60f);
+        addHorizontalBlock(777, 110, 120f, 60f);
+        addstone(677, 110, 110f, 70f);
+
+
+        addGlassBlock(810, 143, 50f, 50f);
+        addGlassBlock(710, 143, 60f, 60f);
+        addglasstriangle(785, 205, 50f, 50f);
+        addstone(777, 27, 120f, 120f);
     }
 
-    private void createBox2DBird(Birds bird) {
+    private void createBox2DBird(Birds bird,float x, float y) {
+//        float x = bird.getSprite().getX();
+//        float y = bird.getSprite().getY();
+
         BodyDef bodyDef = new BodyDef();
         bodyDef.type = BodyDef.BodyType.DynamicBody;  // Bird is DynamicBody for physics interaction
-        bodyDef.position.set(bird.getPosition());
+        bodyDef.position.set(x,y);
 
         CircleShape shape = new CircleShape();
-        shape.setRadius(25 / PPM); // Make sure to account for your pixel-to-meter ratio (PPM)
+        shape.setRadius(15 / PPM); // Make sure to account for your pixel-to-meter ratio (PPM)
 
         FixtureDef fixtureDef = new FixtureDef();
         fixtureDef.shape = shape;
@@ -310,132 +500,164 @@ public class PlayScreen implements Screen, InputProcessor {
 
 
 
+
     private void drawGameElements() {
         for (Pig pig : pigs) pig.getSprite().draw(batch);
         for (Block block : blocks) block.getSprite().draw(batch);
         for (Birds bird : birds) bird.getSprite().draw(batch);
     }
 
-    @Override
-    public boolean keyDown(int i) {
-        return false;
-    }
-
-    @Override
-    public boolean keyUp(int i) {
-        return false;
-    }
-
-    @Override
-    public boolean keyTyped(char c) {
-        return false;
-    }
-    @Override
-    public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-        // Convert screen coordinates to world coordinates
-        Vector3 touchPos = camera.unproject(new Vector3(screenX, screenY, 0));
-
-        // Ensure the slingshot contains the touch position
-        if (slingshot.contains(touchPos.x, touchPos.y)) {
-            isDragging = true;
-            launchStart.set(touchPos.x, touchPos.y);
-            System.out.println("Dragging started at: " + touchPos);
-
-            trajectoryPoints.clear();
-            return true;
+//    @Override
+//    public boolean keyDown(int i) {
+//        return false;
+//    }
+//
+//    @Override
+//    public boolean keyUp(int i) {
+//        return false;
+//    }
+//
+//    @Override
+//    public boolean keyTyped(char c) {
+//        return false;
+//    }
+    private class GameInputProcessor implements InputProcessor {
+        @Override
+        public boolean keyDown(int keycode) {
+            return false;
         }
-        return false;
-    }
 
-    @Override
-    public boolean touchDragged(int screenX, int screenY, int pointer) {
-        if (isDragging) {
-            // Convert touch position to world coordinates
+        @Override
+        public boolean keyUp(int keycode) {
+            return false;
+        }
+
+        @Override
+        public boolean keyTyped(char character) {
+            return false;
+        }
+
+        @Override
+        public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+            // Convert screen coordinates to world coordinates
             Vector3 touchPos = camera.unproject(new Vector3(screenX, screenY, 0));
-            launchEnd.set(touchPos.x, touchPos.y);
 
-            // Limit drag distance (you can adjust this based on game balance)
-            float dragDistance = launchStart.dst(launchEnd);
-            if (dragDistance > MAX_DRAG_DISTANCE) {
-                launchEnd.set(launchStart.x + (launchEnd.x - launchStart.x) * (MAX_DRAG_DISTANCE / dragDistance),
-                    launchStart.y + (launchEnd.y - launchStart.y) * (MAX_DRAG_DISTANCE / dragDistance));
+            // Ensure the slingshot contains the touch position
+            if (slingshot.contains(touchPos.x, touchPos.y)) {
+                isDragging = true;
+                launchStart.set(touchPos.x, touchPos.y);
+                System.out.println("Dragging started at: " + touchPos);
+
+                trajectoryPoints.clear();
+                return true;
             }
-
-            // Update bird's position in physics world (Box2D)
-            if (currentBird != null && currentBird.getBody() != null) {
-                currentBird.getSprite().setPosition(launchEnd.x, launchEnd.y);
-                currentBird.getBody().setTransform(launchEnd.x, launchEnd.y, 0);  // Update the physics body's position
-            }
-
-            // Calculate and store trajectory points
-            calculateTrajectory();
-            return true;
+            return false;
         }
-        return false;
-    }
 
+        @Override
+        public boolean touchDragged(int screenX, int screenY, int pointer) {
+            if (isDragging) {
+                // Convert touch position to world coordinates
+                Vector3 touchPos = camera.unproject(new Vector3(screenX, screenY, 0));
+                launchEnd.set(touchPos.x, touchPos.y);
 
-
-    public boolean touchUp(int screenX, int screenY, int pointer, int button) {
-        if (isDragging) {
-            isDragging = false;
-
-            if (currentBird != null && currentBird.getBody() != null) {
-                // Ensure the bird is not launched yet, it is positioned in the slingshot
-                if (!currentBird.isLaunched()) {
-                    Vector2 slingshotPosition = slingshot.getPosition();
-                    currentBird.getBody().setTransform(slingshotPosition.x + 10, slingshotPosition.y + 20, 0);
-
-                    // Deactivate gravity and physics before launching
-                    currentBird.getBody().setGravityScale(0f);  // Gravity is off
-                    currentBird.getBody().setLinearVelocity(0, 0);  // Reset velocity
-
-                    currentBird.getBody().setActive(true);  // Make it active for drag
-                    System.out.println("Bird set to slingshot position, gravity disabled.");
+                // Limit drag distance (you can adjust this based on game balance)
+                float dragDistance = launchStart.dst(launchEnd);
+                if (dragDistance > MAX_DRAG_DISTANCE) {
+                    launchEnd.set(launchStart.x + (launchEnd.x - launchStart.x) * (MAX_DRAG_DISTANCE / dragDistance),
+                        launchStart.y + (launchEnd.y - launchStart.y) * (MAX_DRAG_DISTANCE / dragDistance));
                 }
 
-
-                // Calculate the launch vector based on the drag distance
-                Vector2 launchVector = new Vector2(launchStart.x - launchEnd.x, launchStart.y - launchEnd.y).scl(5f);
-                currentBird.getBody().setLinearVelocity(launchVector);
-
-                // Apply an impulse to launch the bird
-                Vector2 force = new Vector2(launchVector.x * 50, launchVector.y * 50);
-                currentBird.getBody().applyLinearImpulse(force, currentBird.getBody().getWorldCenter(), true);
-
-                // Reactivate gravity after launch
-                currentBird.getBody().setGravityScale(1f);
-                if (currentBird instanceof YellowBird) {
-                    ((YellowBird) currentBird).setLaunched();
-                    System.out.println("Bird is launched.");
-                }// Gravity back on after launch
-
-                System.out.println("Bird launched with force. Gravity applied.");
-
-                // Transition to the next bird
-                birdIndex++;
-                if (birdIndex < birds.size) {
-                    // Reset the position for the next bird in the slingshot
-                    currentBird = birds.get(birdIndex);
-                    Vector2 slingshotPositionNew = slingshot.getPosition();
-                    currentBird.getSprite().setPosition(slingshotPositionNew.x + 10, slingshotPositionNew.y + 20);
-                    currentBird.getBody().setTransform(slingshotPositionNew.x+10, slingshotPositionNew.y+20, 0);
-
-                    // Disable gravity for the next bird until launched
-                    currentBird.getBody().setGravityScale(0f); // Gravity is off for now
-                    currentBird.getBody().setActive(false); // Make it inactive until it's launched
-                    System.out.println("Next bird positioned at slingshot, gravity disabled.");
-                } else {
-                    currentBird = null; // No more birds left
+                // Update bird's position in physics world (Box2D)
+                if (currentBird != null && currentBird.getBody() != null) {
+                    currentBird.getSprite().setPosition(launchEnd.x, launchEnd.y);
+                    currentBird.getBody().setTransform(launchEnd.x, launchEnd.y, 0);  // Update the physics body's position
                 }
-            }
 
-            // Clear drag points
-            launchStart.setZero();
-            launchEnd.setZero();
-            return true;
+                // Calculate and store trajectory points
+                calculateTrajectory();
+                return true;
+            }
+            return false;
         }
-        return false;
+
+        @Override
+        public boolean mouseMoved(int screenX, int screenY) {
+            return false;
+        }
+
+        @Override
+        public boolean scrolled(float amountX, float amountY) {
+            return false;
+        }
+
+
+        public boolean touchUp(int screenX, int screenY, int pointer, int button) {
+            if (isDragging) {
+                isDragging = false;
+
+                if (currentBird != null && currentBird.getBody() != null) {
+                    // Ensure the bird is not launched yet, it is positioned in the slingshot
+                    if (!currentBird.isLaunched()) {
+                        Vector2 slingshotPosition = slingshot.getPosition();
+                        currentBird.getBody().setTransform(slingshotPosition.x + 10, slingshotPosition.y + 20, 0);
+
+                        // Deactivate gravity and physics before launching
+                        currentBird.getBody().setGravityScale(0f);  // Gravity is off
+                        currentBird.getBody().setLinearVelocity(0, 0);  // Reset velocity
+
+                        currentBird.getBody().setActive(true);  // Make it active for drag
+                        System.out.println("Bird set to slingshot position, gravity disabled.");
+                    }
+
+
+                    // Calculate the launch vector based on the drag distance
+                    Vector2 launchVector = new Vector2(launchStart.x - launchEnd.x, launchStart.y - launchEnd.y).scl(5f);
+                    currentBird.getBody().setLinearVelocity(launchVector);
+
+                    // Apply an impulse to launch the bird
+                    Vector2 force = new Vector2(launchVector.x * 50, launchVector.y * 50);
+                    currentBird.getBody().applyLinearImpulse(force, currentBird.getBody().getWorldCenter(), true);
+
+                    // Reactivate gravity after launch
+                    currentBird.getBody().setGravityScale(1f);
+                    if (currentBird instanceof YellowBird) {
+                        ((YellowBird) currentBird).setLaunched();
+                        System.out.println("Bird is launched.");
+                    }// Gravity back on after launch
+
+                    System.out.println("Bird launched with force. Gravity applied.");
+
+                    // Transition to the next bird
+                    birdIndex++;
+                    if (birdIndex < birds.size) {
+                        // Reset the position for the next bird in the slingshot
+                        currentBird = birds.get(birdIndex);
+                        Vector2 slingshotPositionNew = slingshot.getPosition();
+                        currentBird.getSprite().setPosition(slingshotPositionNew.x + 10, slingshotPositionNew.y + 20);
+                        currentBird.getBody().setTransform(slingshotPositionNew.x + 10, slingshotPositionNew.y + 20, 0);
+
+                        // Disable gravity for the next bird until launched
+                        currentBird.getBody().setGravityScale(0f); // Gravity is off for now
+                        currentBird.getBody().setActive(false); // Make it inactive until it's launched
+                        System.out.println("Next bird positioned at slingshot, gravity disabled.");
+                    } else {
+                        currentBird = null; // No more birds left
+                    }
+                }
+
+                // Clear drag points
+                launchStart.setZero();
+                launchEnd.setZero();
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public boolean touchCancelled(int screenX, int screenY, int pointer, int button) {
+            return false;
+        }
     }
     private void calculateTrajectory() {
         trajectoryPoints.clear();
@@ -467,20 +689,20 @@ public class PlayScreen implements Screen, InputProcessor {
 
 
 
-    @Override
-    public boolean mouseMoved(int i, int i1) {
-        return false;
-    }
-
-    @Override
-    public boolean scrolled(float v, float v1) {
-        return false;
-    }
-
-    @Override
-    public boolean touchCancelled(int i, int i1, int i2, int i3) {
-        return false;
-    }
+//    @Override
+//    public boolean mouseMoved(int i, int i1) {
+//        return false;
+//    }
+//
+//    @Override
+//    public boolean scrolled(float v, float v1) {
+//        return false;
+//    }
+//
+//    @Override
+//    public boolean touchCancelled(int i, int i1, int i2, int i3) {
+//        return false;
+//    }
 
     private void launchBird() {
         // Calculate the velocity based on the drag distance and direction
@@ -509,10 +731,16 @@ public class PlayScreen implements Screen, InputProcessor {
 //        createBox2DBird(bird);
 //        createBox2DPig(pig);
 //        createBox2DBlock(block);
-        Gdx.input.setInputProcessor(this);
+        InputMultiplexer inputMultiplexer = new InputMultiplexer();
 
+        // Set the Stage input processor for handling UI actions (button clicks)
+        inputMultiplexer.addProcessor(stage);
 
+        // Set the GameInputProcessor for handling gameplay actions (e.g., slingshot interaction)
+        inputMultiplexer.addProcessor(new GameInputProcessor());
 
+        // Set the InputMultiplexer as the active input processor
+        Gdx.input.setInputProcessor(inputMultiplexer);
     }
 
 
@@ -539,6 +767,7 @@ public class PlayScreen implements Screen, InputProcessor {
                     for (Block block : blocks) {
                         block.getSprite().draw(batch);
                     }
+
                     for (Birds bird : birds) {
                         if (bird.getBody() != null) {
                             Vector2 bodyPosition = bird.getBody().getPosition();
@@ -678,6 +907,24 @@ public class PlayScreen implements Screen, InputProcessor {
                     handleBirdPigCollision(bird, pig);
                 }
             }
+            if ((userDataA instanceof Birds && userDataB instanceof Block) ||
+                (userDataA instanceof Block && userDataB instanceof Birds)) {
+
+                Birds bird = (userDataA instanceof Birds) ? (Birds) userDataA : (Birds) userDataB;
+                Block block = (userDataA instanceof Block) ? (Block) userDataA : (Block) userDataB;
+
+                if (bird != null && block != null) {
+                    System.out.println("Bird collided with Block!");
+
+                    // Mark the block for destruction
+                    playScreen.markForDestruction(block.getBody());
+
+                    // Optional: Handle additional effects like breaking sound or block debris
+                    reduceBirdSpeed(bird);
+                    handleBirdBlockCollision(bird, block);
+                }
+            }
+
 
             // Additional collision handling...
         }
@@ -712,7 +959,6 @@ public class PlayScreen implements Screen, InputProcessor {
         public void postSolve(Contact contact, ContactImpulse impulse) {
 
         }
-
         private void handleBirdPigCollision(Birds bird, Pig pig) {
             System.out.println("Bird collided with Pig!");
 
@@ -722,7 +968,6 @@ public class PlayScreen implements Screen, InputProcessor {
             // Add more detailed effects if needed
             System.out.println("Handling additional effects for Bird-Pig collision.");
         }
-
         private void handleBirdBlockCollision(Birds bird, Block block) {
             System.out.println("Bird collided with Block!");
 
@@ -767,22 +1012,16 @@ public class PlayScreen implements Screen, InputProcessor {
     }
     public void checkBirdOutOfScreen(Birds bird) {
         if (bird.getBody() != null && isBirdOutOfScreen(bird)) {
-            System.out.println("Bird is out of the screen and will be destroyed!");
+            System.out.println("Bird is out of the screen!");
 
-            // Destroy the body if the bird is out of the screen
-            world.destroyBody(bird.getBody());  // Properly destroy the bird's body from Box2D
-            bird.setBody(null);  // Remove the reference to the body
-
-            // Mark the bird as destroyed
-            bird.setDestroyed(true);
-
-            System.out.println("Bird destroyed.");
+            // Mark the bird as out of the screen (without destroying it)
+            bird.setOutOfScreen(true);
         }
     }
 
     private boolean isBirdOutOfScreen(Birds bird) {
         // Define the screen boundaries, assuming screen width and height
-        float screenWidth = 800;  // Example screen width
+        float screenWidth = 1200;  // Example screen width
         float screenHeight = 600; // Example screen height
 
         float birdX = bird.getPosition().x;
@@ -825,28 +1064,38 @@ public class PlayScreen implements Screen, InputProcessor {
     }
 
     public void displayWinScreen() {
-        // Show a win message or transition to a victory screen
+        // Show a win message in the console or screen
         System.out.println("Victory! You destroyed all the pigs!");
-        // Transition to a win screen, pause the game, etc.
+
+        // Transition to the win screen by setting the WinScreen as the active screen
+//        game.setScreen(new WinScreen(game));  // Assuming game is your Main instance
+
+        // Optionally, pause the game or stop any game logic if needed
+        // You can also stop any music/sounds or animations here
     }
 
 
-    public void checkForLossCondition() {
-        boolean allBirdsDestroyed = true;
 
-        // Iterate over all birds in the game
-        for (Birds bird : birds) {  // Assume `birds` is a list of all bird objects in the game
-            if (bird.getBody()!=null) {  // If any bird is still active, we haven't lost
-                allBirdsDestroyed = false;
-                break;  // Exit the loop early since we found an active bird
+    public void checkForLossCondition() {
+        int activeBirds = 0;
+        int totalBirds = birds.size;
+
+        // Count active birds
+        for (Birds bird : birds) {
+            if (bird.getBody() != null && !bird.isUsed() && !bird.isOutOfScreen()) {
+                activeBirds++;
             }
         }
 
-        // If all birds are destroyed (inactive), trigger the loss condition
-        if (allBirdsDestroyed) {
-            System.out.println("All birds are destroyed. You lose!");
-            // Optional: Trigger loss screen or game over animation
-            displayLossScreen();
+        // Debugging info
+        System.out.println("Active Birds: " + activeBirds);
+        System.out.println("Total Birds: " + totalBirds);
+        System.out.println("Bird Index: " + birdIndex);
+
+        // If no active birds left, or all birds have been used and no pigs are destroyed
+        if (activeBirds == 0 && birdIndex >= totalBirds) {
+            System.out.println("You lose! All birds are either used or out of the screen.");
+            displayLossScreen();  // Handle the loss (e.g., transition to a loss screen)
         }
     }
 
