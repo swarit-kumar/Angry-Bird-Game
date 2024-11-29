@@ -1,6 +1,6 @@
 package Menu;
 
-import Playscreen.Playscreen;
+import Playscreen.PlayScreen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
@@ -25,8 +25,11 @@ public class Menuscreen implements Screen {
     private Texture resumeTexture, quitTexture, restartTexture;
     private ImageButton resumeButton, quitButton, restartButton;
 
-    public Menuscreen(Main game) {
+    private int currentLevel; // Current level reference
+
+    public Menuscreen(Main game,int currentLevel) {
         this.game = game;
+        this.currentLevel = currentLevel;
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
 
@@ -34,17 +37,17 @@ public class Menuscreen implements Screen {
         backgroundTexture = new Texture(Gdx.files.internal("background.jpeg"));
         backgroundImage = new Image(backgroundTexture);
         backgroundImage.setSize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        stage.addActor(backgroundImage);  // Add background to stage
+        stage.addActor(backgroundImage); // Add background to stage
 
         // Load button textures
         resumeTexture = new Texture(Gdx.files.internal("playicon.png"));
         quitTexture = new Texture(Gdx.files.internal("quit.png"));
-        restartTexture = new Texture(Gdx.files.internal("restart.png"));  // Updated texture for restart
+        restartTexture = new Texture(Gdx.files.internal("restart.png")); // Updated texture for restart
 
         // Create ImageButtons for Resume, Quit, Restart
         resumeButton = new ImageButton(new TextureRegionDrawable(resumeTexture));
         quitButton = new ImageButton(new TextureRegionDrawable(quitTexture));
-        restartButton = new ImageButton(new TextureRegionDrawable(restartTexture));  // Changed to restartButton
+        restartButton = new ImageButton(new TextureRegionDrawable(restartTexture)); // Changed to restartButton
 
         // Set the positions and sizes for the buttons (center aligned)
         float buttonWidth = 200f;
@@ -56,7 +59,7 @@ public class Menuscreen implements Screen {
         restartButton.setSize(buttonWidth, buttonHeight);
 
         resumeButton.setPosition(centerX, Gdx.graphics.getHeight() / 2 + 120);
-        restartButton.setPosition(centerX, Gdx.graphics.getHeight() / 2);  // This replaces the saveButton
+        restartButton.setPosition(centerX, Gdx.graphics.getHeight() / 2); // This replaces the saveButton
         quitButton.setPosition(centerX, Gdx.graphics.getHeight() / 2 - 120);
 
         // Add buttons to stage
@@ -68,7 +71,16 @@ public class Menuscreen implements Screen {
         resumeButton.addListener(new com.badlogic.gdx.scenes.scene2d.utils.ChangeListener() {
             @Override
             public void changed(ChangeEvent event, com.badlogic.gdx.scenes.scene2d.Actor actor) {
-                game.setScreen(new Playscreen(game, 1)); // Go back to PlayScreen (example)
+                game.setScreen(new PlayScreen(game, currentLevel)); // Resume current PlayScreen
+                System.out.println("Resumed Level " + currentLevel);
+            }
+        });
+
+        restartButton.addListener(new com.badlogic.gdx.scenes.scene2d.utils.ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, com.badlogic.gdx.scenes.scene2d.Actor actor) {
+                game.setScreen(new PlayScreen(game, currentLevel)); // Restart current level
+                System.out.println("Restarted Level " + currentLevel);
             }
         });
 
@@ -76,14 +88,7 @@ public class Menuscreen implements Screen {
             @Override
             public void changed(ChangeEvent event, com.badlogic.gdx.scenes.scene2d.Actor actor) {
                 Gdx.app.exit(); // Quit the game
-            }
-        });
-
-        restartButton.addListener(new com.badlogic.gdx.scenes.scene2d.utils.ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, com.badlogic.gdx.scenes.scene2d.Actor actor) {
-                game.setScreen(new Playscreen(game, 1)); // Restart current level (using level 1 as an example)
-                System.out.println("Level restarted!"); // Placeholder action
+                System.out.println("Game Exited");
             }
         });
     }
