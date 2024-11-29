@@ -1,5 +1,6 @@
 package Menu;
 
+import Level.Level;
 import Playscreen.PlayScreen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
@@ -71,8 +72,8 @@ public class Menuscreen implements Screen {
         resumeButton.addListener(new com.badlogic.gdx.scenes.scene2d.utils.ChangeListener() {
             @Override
             public void changed(ChangeEvent event, com.badlogic.gdx.scenes.scene2d.Actor actor) {
-                game.setScreen(new PlayScreen(game, currentLevel)); // Resume current PlayScreen
-                System.out.println("Resumed Level " + currentLevel);
+                game.setScreen(new Level(game)); // Resume current PlayScreen
+
             }
         });
 
